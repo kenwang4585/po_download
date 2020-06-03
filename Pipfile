@@ -10,7 +10,8 @@ pyautogui = "*"
 pandas = "*"
 xlrd = "*"
 sqlalchemy = "*"
-pymssql = "*"
+py2app = "*"
+smartsheet-python-sdk = "*"
 
 [requires]
 python_version = "3.7"

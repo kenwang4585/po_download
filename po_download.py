@@ -1,5 +1,5 @@
 """
-    # Download PO copy from Oracle base on the PO list in excel
+    # Download PO copy from Oracle base on the PO list in smartsheet
     # Ken: Aug 2019
 """
 
@@ -7,6 +7,7 @@ import pyautogui
 import webbrowser
 import time
 import pandas as pd
+from smartsheet_handler import SmartSheetClient
 
 
 
@@ -299,12 +300,36 @@ def po_download(input_df):
 
     return loaded_po
 
+def read_po_from_smartsheet():
+    '''
+    Read PO data from smartsheet
+    :return:
+    '''
+    token = '5wjf4z6dw5s51urk0cao7vkxok'
+    sheet_id = '6111099402643332'
+
+    proxies = None  # for proxy server
+
+
+    # 读取smartsheet的对象（从smartsheet_hanndler导入类）
+    smartsheet_client = SmartSheetClient(token, proxies)
+
+    # 从smartsheet读取compliance data
+    df = smartsheet_client.get_sheet_as_df(sheet_id, add_row_id=False, add_att_id=False)
+
+    df=df[df.STATUS!='DOWNLOADED']
+
+    return df
+
 
 if __name__=='__main__':
     pyautogui.FAILSAFE = True
 
     #从文件读取数据
-    input_df=read_data(fname='/users/wangken/py/auto/po_download/PO.xlsx')
+    #input_df=read_data(fname='/users/wangken/py/auto/po_download/PO.xlsx')
+    df_po=read_po_from_smartsheet()
+
+    print(df_po)
 
     # 打开Oracle
     webbrowser.open(url)
@@ -322,7 +347,7 @@ if __name__=='__main__':
     #time.sleep(15)
 
     #开始下载PO
-    loaded_po=po_download(input_df)
+    loaded_po=po_download(df_po)
     po_list=[x[0] for x in loaded_po]
 
-    #print('Below PO have executed PO download{}:\n{}'.format(len(po_list),po_list))
+    print('Below PO have executed PO download{}:\n{}'.format(len(po_list),po_list))
