@@ -269,7 +269,7 @@ def update_po_status_in_smartsheet(smartsheet_client,sheet_id,df_po,po_number):
     smartsheet_client.update_row_with_dict(ss=smartsheet.Smartsheet(token), process_type='update',
                                            sheet_id=sheet_id,
                                            row_id=row_id,
-                                           update_dict=[{'STATUS': 'DOWNLOADED','DATE':pd.Timestamp.today().strftime('%Y-%m-%d')}])
+                                           update_dict=[{'STATUS': 'DOWNLOADED','DOWNLOAD_DATE':pd.Timestamp.today().strftime('%Y-%m-%d')}])
 
 if __name__=='__main__':
     pyautogui.FAILSAFE = True
