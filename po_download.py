@@ -218,6 +218,7 @@ def po_download(smartsheet_client, sheet_id, df_po):
     for row in df_po.itertuples(index=False):
         po_number=str(row.PO_NUMBER).strip()
         employee_id=str(row.EMPLOYEE_ID).strip()
+        row_id=row.row_id
         email=str(row.CM_EMAIL).strip() +', ' + row.USER_NAME.strip() + '@cisco.com'
         #email = str(row.CM_EMAIL).strip()
 
@@ -237,7 +238,7 @@ def po_download(smartsheet_client, sheet_id, df_po):
             i+=1
 
         po_downloaded.append(po_number)
-        update_po_status_in_smartsheet(smartsheet_client, sheet_id, df_po, po_number)
+        update_po_status_in_smartsheet(smartsheet_client, sheet_id, row_id)
 
         readiness_check(step='step5')
         step5_decide_if_continue(next_po=continue_next_po)
@@ -256,16 +257,15 @@ def read_po_from_smartsheet(smartsheet_client,sheet_id):
 
     return df
 
-def update_po_status_in_smartsheet(smartsheet_client,sheet_id,df_po,po_number):
+def update_po_status_in_smartsheet(smartsheet_client,sheet_id,row_id):
     """
     # 更新smartsheet
     :param smartsheet_client:
     :param sheet_id:
     :param df:
-    :param po_number:
+    :param row_id:
     :return:
     """
-    row_id=int(df_po[df_po.PO_NUMBER==po_number].iloc[0,-1])
     smartsheet_client.update_row_with_dict(ss=smartsheet.Smartsheet(token), process_type='update',
                                            sheet_id=sheet_id,
                                            row_id=row_id,
