@@ -9,6 +9,7 @@ import time
 import pandas as pd
 from smartsheet_handler import SmartSheetClient
 import smartsheet
+import getpass
 
 
 
@@ -16,80 +17,28 @@ import smartsheet
 url='https://wwwin-cg1prd.cisco.com:443/OA_HTML/RF.jsp?function_id=75&resp_id=51181&resp_appl_id=201&security_group_id=0&lang_code=US'
 
 # 每一个步骤关键点坐标位置及颜色[(x,y),(R,G,B,A)]
-step_setting = {'step_logon':[(813, 725), (4, 159, 217, 255),(1076, 383), (99, 178, 70, 255)],#(before mouse move to the x/y)logon button in user/pw window,'Call Me' button under Duo window
-                'step_duo_recall':[(805, 594), (161, 54, 57, 255)], #if Duo not answer/confirmed, will recall again
-                'step1_single_set_window':[(405,208), (45, 132, 197, 255)], #start option window top bar.select 'single request' via 'enter'
+step_setting_ken = {'step1_single_set_window':[(405,208), (45, 132, 197, 255)], #start option window top bar.select 'single request' via 'enter'
 			    'step2_submit_request_window':[(360, 113), (45, 132, 197, 255)], #main window top bar. Name is focused, input "Cisco printed PO report" and so on
 				'step3_op_unit_selection_window':[(1003, 358), (57, 136, 194, 255)],# Op unit selection window close (X)
 				'step4_po_id_email_input_window':[(578, 208), (45, 132, 197, 255)], # PO input window top bar. PO is focused, input po and other info
-				#'step3':[(1221, 208), (57, 136, 194, 255)],# Po input window x (close)
 				'step5_submit_task':[(468, 567), (211, 228, 244, 255)], # submit button (use step1 loc to check readiness)
-                #'step5_submit_task':[(531, 602), (106, 86, 59, 255)], # input employee id; then tab, tab, input email address; then enter to exit the window
-				#'step9':[(360, 113), (45, 132, 197, 255)], # x/y/color - as step2 (check readiness). press 'enter' to 'submit'
                 'step6_decide_continue':[(722, 390), (45, 132, 197, 255)], # Decide if want to submit another PO
 					 }
+step_setting_cheshire={'step1_single_set_window':[(565, 253), (45, 132, 197)], #start option window top bar.select 'single request' via 'enter'
+			    'step2_submit_request_window':[(577, 116), (45, 132, 197)], #main window top bar. Name is focused, input "Cisco printed PO report" and so on
+				'step3_op_unit_selection_window':[(1396, 370), (86, 165, 223)],# Op unit selection window close (X)
+				'step4_po_id_email_input_window':[(955, 305), (45, 132, 197)], # PO input window top bar. PO is focused, input po and other info
+				'step5_submit_task':[(769, 797), (211, 228, 244)], # submit button (use step1 loc to check readiness)
+                'step6_decide_continue':[(961, 539), (45, 132, 197)], # Decide if want to submit another PO
+                }
 
-def logon_and_duo(step='step_logon'):
-    '''
-    Use this to check if logon/security check window pop up, and action accordingly.
-    :param step:
-    :return:
-    '''
-
-    pos1_color,pos2_color,pos3_color = (1, 1, 1, 1),(1, 1, 1, 1),(1, 1, 1, 1)  # set initial base color
-    #below check all the possible starting window: Logon/Duo/Oracle start window (so it won't stuck if not found)
-    while pos1_color != step_setting.get(step)[1] and pos2_color != step_setting.get(step)[3] and pos3_color != step_setting.get('step1_single_set_window')[1]:  # 如果多条件是用 AND
-        time.sleep(2)
-
-        screen = pyautogui.screenshot().resize(pyautogui.size())
-        pos1_color = screen.getpixel(step_setting.get(step)[0])
-        pos2_color = screen.getpixel(step_setting.get(step)[2])
-        pos3_color = screen.getpixel(step_setting.get('step1_single_set_window')[0])
-        print('looking for Logon/Duo/start window...')
-
-    if pos1_color == step_setting.get(step)[1]: #if it's logon window
-        pyautogui.moveTo(step_setting.get(step)[0],duration=0.2)
-        pyautogui.click()
-    elif pos2_color == step_setting.get(step)[3]: # or if it's Dup window
-        pyautogui.moveTo(step_setting.get(step)[2], duration=0.2)
-        pyautogui.click()
-    else: # or if it's already Oracle start window
-        pass
-
-
-def duo_recall(step='step_duo_recall',wait_time_for_next_call=10):
-    '''
-    If Duo not answered/confirmed, will recall this again for 3 times .
-    :param step:
-    :return:
-    '''
-    need_recall=False
-
-    pos1_color,pos2_color =(1, 1, 1, 1),(1, 1, 1, 1)  # set initial base color
-    #below check all the possible starting window: Logon/Duo/Oracle start window (so it won't stuck if not found)
-    while pos1_color != step_setting.get(step)[1] and pos2_color != step_setting.get('step1_single_set_window')[1]:  # 如果多条件是用 AND
-        time.sleep(2)
-
-        screen = pyautogui.screenshot().resize(pyautogui.size())
-        pos1_color = screen.getpixel(step_setting.get(step)[0])
-        pos2_color = screen.getpixel(step_setting.get('step1_single_set_window')[0])
-        print('looking for Duo or start window...')
-
-    if pos1_color == step_setting.get(step)[1]: # Duo window
-        time.sleep(wait_time_for_next_call)
-        pyautogui.moveTo(step_setting.get('step_logon')[2], duration=0.2)
-        pyautogui.click()
-    else: # or if it's already Oracle start window
-        pass
-
-
-def readiness_check(step='stepx'):
+def readiness_check(step_setting,step='stepx'):
     '''
     common function to check if a window or a position is ready&available by checking it's color
     :param step:link to steps in step_setting
     :return: True when it's ready
     '''
-    pyautogui.moveTo(step_setting.get(step)[0],duration=0.3)
+    pyautogui.moveTo(step_setting.get(step)[0],duration=0.03)
     pos_color = (1, 1, 1, 1)  # set initial base color
     while pos_color != step_setting.get(step)[1]:  # 如果多条件是用 OR
         time.sleep(0.5)
@@ -99,13 +48,13 @@ def readiness_check(step='stepx'):
 
     return pos_color
 
-def get_pos_color(step='stepx'):
+def get_pos_color(step_setting,step='stepx'):
     '''
     Get position color
     :param step:link to steps in step_setting
     :return: True when it's ready
     '''
-    pyautogui.moveTo(step_setting.get(step)[0],duration=0.3)
+    pyautogui.moveTo(step_setting.get(step)[0],duration=0.03)
     screen = pyautogui.screenshot().resize(pyautogui.size())
     pos_color = screen.getpixel(step_setting.get(step)[0])
 
@@ -119,7 +68,7 @@ def step1_select_single_request_option():
     # just hit 'enter' since OK button is focused already
     pyautogui.press('enter')
 
-def step2_report_name_op_input(i,po_number,msg='Cisco Email printed PO report'):
+def step2_report_name_op_input(step_setting,i,po_number,msg='Cisco Email printed PO report'):
     '''
     Input 'Cisco printed PO report' (box already focused), then Enter
     :param i: sequence of PO (if it's first PO, or second, etc.)
@@ -133,11 +82,12 @@ def step2_report_name_op_input(i,po_number,msg='Cisco Email printed PO report'):
     else:
         op_unit = 'NETHERLANDS Operating'
         print("You have PO not start with 555 or 202, check if using 'NETHERLANDS Operating' correct or not.")
-
+        
     # just type the words since box already focused
     pyautogui.typewrite(message=msg,interval=0.03)
 
     pyautogui.press('tab') # this tab will open up PO window by default IF it's FIRST PO, otherwise to next input box in same window
+    time.sleep(0.5)
     if i==1: # 如果是第一个PO，关闭PO window,以便重新输入正确的Operating Unit
         time.sleep(2)
         pyautogui.moveTo(step_setting.get('step3_op_unit_selection_window')[0], duration=0.2)
@@ -146,6 +96,8 @@ def step2_report_name_op_input(i,po_number,msg='Cisco Email printed PO report'):
     # 输入operating unit,然后用'tab'进入到po_window
     pyautogui.typewrite(message=op_unit, interval=0.03)
     pyautogui.press('tab')  # move to po window
+    time.sleep(0.5)
+
     """
     step='step4_po_id_email_input_window'
     pos_color=get_pos_color(step=step)
@@ -155,7 +107,7 @@ def step2_report_name_op_input(i,po_number,msg='Cisco Email printed PO report'):
     """
 
 
-def step3_po_id_email_input(po_number,employee_id,email):
+def step3_po_id_email_input(po_number,email):
     '''
     Input PO number and selection (ALL)
     :param po: PO_number
@@ -164,32 +116,31 @@ def step3_po_id_email_input(po_number,employee_id,email):
     # just typewrite since box already focused
     pyautogui.typewrite(message=po_number,interval=0.03)
     pyautogui.press('tab')
-    pyautogui.typewrite(message=po_number, interval=0.03)
     time.sleep(0.5)
+
+    pyautogui.typewrite(message=po_number, interval=0.03)
     pyautogui.press('tab')
+    time.sleep(0.5)
+
     pyautogui.typewrite(message='All',interval=0.03)
 
-    pyautogui.press('tab')
-    pyautogui.press('tab')
-    pyautogui.press('tab')
-    pyautogui.press('tab')
-    pyautogui.press('tab')
-    pyautogui.press('tab')
-    pyautogui.press('tab')
-    pyautogui.press('tab')
-    pyautogui.press('tab')
-    pyautogui.press('tab')
+    for i in range(10):
+        pyautogui.press('tab')
+    #time.sleep(0.5)
 
-    pyautogui.typewrite(message=employee_id, interval=0.03)
+    #pyautogui.typewrite(message=employee_id, interval=0.03)
     pyautogui.press('tab')
     pyautogui.press('tab')
+    time.sleep(0.5)
+
     pyautogui.typewrite(message=email, interval=0.03)
-
     pyautogui.press('tab')
+    time.sleep(0.5)
+
     pyautogui.press('enter')
 
 
-def step4_submit():
+def step4_submit(step_setting):
     '''
     Press enter to submit this PO
     :param step: 'step7'
@@ -215,7 +166,7 @@ def step5_decide_if_continue(next_po=True):
 
 
 
-def po_download(smartsheet_client, sheet_id, df_po):
+def po_download(step_setting,smartsheet_client, sheet_id, df_po):
     '''
     Based on df that contains PO/user/email to download the PO copy from Oracle
     :param df: data frame with header row: PO_NUMBER, USER_NAME,EMAIL
@@ -223,7 +174,7 @@ def po_download(smartsheet_client, sheet_id, df_po):
     '''
 
     #step1 option window 只需在开始时做一次
-    readiness_check(step='step1_single_set_window')
+    readiness_check(step_setting,step='step1_single_set_window')
     step1_select_single_request_option()
 
     print('Start downloading PO...')
@@ -232,19 +183,18 @@ def po_download(smartsheet_client, sheet_id, df_po):
     i=1
     for row in df_po.itertuples(index=False):
         po_number=str(row.PO_NUMBER).strip()
-        employee_id=str(row.EMPLOYEE_ID).strip()
         row_id=row.row_id
         email=str(row.CM_EMAIL).strip() +', ' + row.USER_NAME.strip() + '@cisco.com'
         #email = str(row.CM_EMAIL).strip()
 
-        readiness_check(step='step2_submit_request_window')
-        step2_report_name_op_input(i,po_number,msg='Cisco Email Printed PO Report')
+        readiness_check(step_setting,step='step2_submit_request_window')
+        step2_report_name_op_input(step_setting,i,po_number,msg='Cisco Email Printed PO Report')
 
-        readiness_check(step='step4_po_id_email_input_window') # PO window
-        step3_po_id_email_input(po_number,employee_id,email)
+        readiness_check(step_setting,step='step4_po_id_email_input_window') # PO window
+        step3_po_id_email_input(po_number,email)
 
-        readiness_check(step='step2_submit_request_window') #back to step2 window
-        step4_submit() # submit button
+        readiness_check(step_setting,step='step2_submit_request_window') #back to step2 window
+        step4_submit(step_setting) # submit button
 
         if i==df_po.shape[0]:
             continue_next_po=False
@@ -255,7 +205,7 @@ def po_download(smartsheet_client, sheet_id, df_po):
         po_downloaded.append(po_number)
         update_po_status_in_smartsheet(smartsheet_client, sheet_id, row_id)
 
-        readiness_check(step='step6_decide_continue')
+        readiness_check(step_setting,step='step6_decide_continue')
         step5_decide_if_continue(next_po=continue_next_po)
 
     return po_downloaded
@@ -287,6 +237,15 @@ def update_po_status_in_smartsheet(smartsheet_client,sheet_id,row_id):
                                            update_dict=[{'STATUS': 'DOWNLOADED','DOWNLOAD_DATE':pd.Timestamp.today().strftime('%Y-%m-%d')}])
 
 if __name__=='__main__':
+    user=getpass.getuser()
+    print('Current user is:',user)
+    if user=='wangken':
+        step_setting=step_setting_ken
+    elif user=='chairlin':
+        step_setting=step_setting_cheshire
+    else:
+        raise Exception('This user if not predefined so may not work well, program exit.')
+
     pyautogui.FAILSAFE = True
 
     token = '5wjf4z6dw5s51urk0cao7vkxok'
@@ -319,7 +278,7 @@ if __name__=='__main__':
 
 
         #开始下载PO
-        po_downloaded=po_download(smartsheet_client, sheet_id, df_po)
+        po_downloaded=po_download(step_setting,smartsheet_client, sheet_id, df_po)
 
         print('{} PO have been download:'.format(len(po_downloaded)))
         for po in po_downloaded:
